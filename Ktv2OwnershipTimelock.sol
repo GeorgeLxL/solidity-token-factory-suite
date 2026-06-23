@@ -62,8 +62,12 @@ contract Ktv2OwnershipTimelock is ReentrancyGuard {
         require(duration >= MIN_FREEZE_DURATION, "Below minimum");
         require(duration <= MAX_FREEZE_DURATION, "Exceeds maximum");
         
+        currentLock = Lock({
+            originalOwner: msg.sender,
+            unlockTime: block.timestamp + duration,
+            active: true
+        });
 
-        
         emit OwnershipFrozen(msg.sender, currentLock.unlockTime, duration);
     }
     
@@ -77,10 +81,10 @@ contract Ktv2OwnershipTimelock is ReentrancyGuard {
         require(block.timestamp >= currentLock.unlockTime, "Not expired");
         
         address owner = currentLock.originalOwner;
-        
+
         delete currentLock;
         delete registeredOwner;
-        
+
         Ownable(ktv2Contract).transferOwnership(owner);
         
         emit OwnershipRestored(owner, block.timestamp);
@@ -95,8 +99,9 @@ contract Ktv2OwnershipTimelock is ReentrancyGuard {
         require(msg.sender == currentLock.originalOwner, "Not original owner");
         require(additionalDuration > 0, "Invalid duration");
         
+        uint256 newUnlockTime = currentLock.unlockTime + additionalDuration;
+        require(newUnlockTime <= block.timestamp + MAX_FREEZE_DURATION, "Exceeds maximum");
 
-        
         currentLock.unlockTime = newUnlockTime;
         
         emit FreezeExtended(currentLock.originalOwner, newUnlockTime, additionalDuration);
